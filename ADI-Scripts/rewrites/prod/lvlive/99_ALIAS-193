@@ -1,0 +1,1 @@
+RewriteRule ^/30045/?(.*) http://www.starledger.com/circulation/30045/indexet.html [R=301,L,NE]

@@ -1,0 +1,1 @@
+RewriteRule ^/sourcedir/?(.*) http://www-stage.nj.com/sports/ [R=301,L,NE]
