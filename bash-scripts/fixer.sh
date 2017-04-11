@@ -35,6 +35,13 @@
  err3_txt="ERROR3: Disaster 666"
 
 
+
+#Grep file that throws ERROR for string that will decide the placement of missing lines
+test=$(grep 'foo' "$1")
+echo "$test"
+
+
+
 #Loop over every ERROR and if match then do something
  for i in "${lines[@]}"
 
