@@ -1,0 +1,124 @@
+#!/opt/bb/bin/bbpy
+
+import argparse
+import bas
+import cdb2
+import logging
+
+logging.basicConfig(filename='/bb/logs/rhst_contact_sync.log',
+                    level=logging.DEBUG)
+
+db = cdb2.SqlService("rhst3db", tier="default")
+id = bas.UserIdent.factory(uuid=1603009)
+svc = bas.lookup("rhstdsvc", 2, 24).tcpClient(userIdent=id)
+
+
+def main():
+    """ main """
+    parser = argparse.ArgumentParser(
+        description='Sync cluster contacts to machines'
+    )
+    parser.add_argument(
+        '--all',
+        action='store_true',
+        help='Scan all (empty) clusters in RHST; `tags` must be present'
+    )
+    parser.add_argument(
+        '--clear',
+        action='store_true',
+        help='Replace all existing contacts with cluster contacts'
+    )
+    parser.add_argument(
+        'tags',
+        type=str,
+        nargs='*'
+    )
+    args = parser.parse_args()
+    if args.clear:
+        replaceContacts(args.tags, args.all)
+    elif len(args.tags) == 0:
+        updateContactlessMachines()
+    else:
+        parser.print_help()
+        parser.exit(1)
+
+
+def replaceContacts(tags, all):
+    for tag in tags:
+        try:
+            tag = tag.upper()
+            if svc.getCluster(tag).selector() != "getCluster":
+                raise Exception("%s is not a cluster" % tag)
+            logging.info("Starting updates for %s" % tag)
+            g = svc.getGroupDetails(tag).groupDetails
+            for m in g.machines:
+                node = svc.getMachineDetails(m).machineDetails.nodeId
+                logging.info("Updating %s" % m)
+                svc.updateContact({
+                    "entity": 0,
+                    "id": node,
+                    "contacts": g.contacts
+                })
+            logging.info("Finished updates for %s" % tag)
+        except Exception as e:
+            logging.error("Error updating %s: %s" % (tag, e))
+
+
+def updateContactlessMachines():
+    for machine in getContactlessMachines(db):
+        resp = svc.getMachineDetails(machine['name'])
+        if "machineDetails" == resp.selector():
+            logging.info("Existing contacts for %s: %s" % (
+                machine['name'],
+                resp.machineDetails.contacts)
+            )
+            replaceContactsFromCluster(svc, machine)
+
+
+def getContactlessMachines(db):
+    """ Returns a list of machines without contacts """
+    query = '''SELECT m.prc_comm_node_id AS node,
+                      m.machine_name AS name,
+                      g.group_name AS cluster
+               FROM machine m
+               JOIN rhst_group g
+                 ON group_number = cluster_id
+               WHERE prc_comm_node_id NOT IN
+                 (SELECT entity_id FROM contact WHERE contact_type = 6)
+             '''
+
+    return [row._toPy() for row in db.execute(query)]
+
+
+def replaceContactsFromCluster(svc, machine):
+    """
+    Copies contacts from a cluster to a machines.
+    This assumes the machine is already empty.
+    """
+    resp = svc.getFromString(machine['cluster'])
+    if resp.selector() == "groupDetails":
+        contacts = resp.groupDetails.contacts
+
+        contactInfo = {"entity": 0,
+                       "id": machine['node'],
+                       "contacts": contacts}
+        resp = svc.updateContact(contactInfo)
+        if resp.selector() == "errorMessage" and resp.errorMessage == "SUCCESS":
+            logging.info("Successfully updated %s from %s" % (
+                machine['name'],
+                machine['cluster'])
+            )
+        else:
+            logging.info("Updating %s from %s failed: %s" % (
+                machine['name'],
+                machine['cluster'],
+                resp)
+            )
+    else:
+        logging.error("Invalid cluster for %s: %s" % (
+            machine['name'],
+            resp.errorMessage)
+        )
+
+if __name__ == "__main__":
+    main()
