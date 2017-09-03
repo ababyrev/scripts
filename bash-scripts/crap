@@ -1,0 +1,329 @@
+#!/bin/ksh
+# wsysbe - endofday deletions and misc functions
+#
+###############################
+#    SAME ON ALL MACHINES     #
+###############################
+# - change on a prod machine
+# - then move to all others (including test)
+#
+BINDIR=/bb/bin
+BBHOST=${BINDIR}/bbhost
+HOST=$(hostname)
+findswitch='-xdev'
+cd $BINDIR
+touch ${BINDIR}/wsysbe.start
+#
+# create a command file 
+# first column is the type of machine found in bbcpu.lst
+# subsequent fields are files to delete from this machine
+# if this machine is one of the types from the 1st column
+#
+echo "trading dbex.tsk" > wsysbe.cmd
+echo "message dbex.tsk" >> wsysbe.cmd
+echo "history dbex.tsk" >> wsysbe.cmd
+echo "internal dbex.tsk" >> wsysbe.cmd
+echo "multimedia dbex.tsk" >> wsysbe.cmd
+echo "history nohup.out" >> wsysbe.cmd
+
+if date|grep -v Sun|grep -v Mon|grep -v Tue|grep -v Wed >/dev/null ; then
+    rm -f ${BINDIR}/portfiles.lock ${BINDIR}/portfiles.run ${BINDIR}/portfiles.log 2>/dev/null
+fi
+
+if [[ -d /bb/data/vsecserv ]] ; then
+    rm -f /bb/data/vsecserv/* 2>/dev/null
+fi
+
+if [[ -d /bb/data/ntdl ]] ; then
+    find /bb/data/ntdl/ $findswitch -name '*.csv' -mtime +7 -exec rm -f {} \; 2>/dev/null
+fi
+
+for ext in cmd wrk err out fil inp ; do
+    rm -f /bb/bin/csof*.$ext 2>/dev/null
+    rm -f /bb/bin/pvar*.$ext 2>/dev/null
+done
+
+for xx in runonhistory.log sendtohistory.log s2h.log ; do
+    if [[ -f /bb/data/$xx ]] ; then
+        newoccurence /bb/data/$xx 7
+    fi
+done
+
+## Clean /tmp
+if [[ -d /tmp ]] ; then
+    rm -f /tmp/clt* 2>/dev/null
+    rm -f /tmp/lbrd* 2>/dev/null
+    rm -f /tmp/lsync* 2>/dev/null
+    rm -f /tmp/*.bcm 2>/dev/null
+    rm -f /tmp/*.bmm 2>/dev/null
+    rm -f /tmp/*.cnf 2>/dev/null
+    rm -f /tmp/*.cvt 2>/dev/null
+    rm -f /tmp/*.spl 2>/dev/null
+    rm -f /tmp/*.pdf 2>/dev/null
+    rm -f /tmp/*.tif 2>/dev/null
+    rm -f /tmp/*.trs 2>/dev/null
+    rm -f /tmp/*.fil 2>/dev/null
+    rm -f /tmp/*.paused 2>/dev/null
+    rm -f /tmp/ws*.blp 2>/dev/null
+    rm -f /tmp/cmapa*.srt 2>/dev/null
+    rm -f /tmp/fapcr*.cmd 2>/dev/null
+    rm -f /tmp/fapcr*.err 2>/dev/null
+    rm -f /tmp/fapcr*.lst 2>/dev/null
+    rm -f /tmp/fapcr*.trc 2>/dev/null
+    rm -f /tmp/fapcr*.dat 2>/dev/null
+    rm -f /tmp/farpt*.cmd 2>/dev/null
+    rm -f /tmp/farpt*.err 2>/dev/null
+    rm -f /tmp/farpt*.lst 2>/dev/null
+    rm -f /tmp/farpt*.trc 2>/dev/null
+    rm -f /tmp/farpt*.dat 2>/dev/null
+    rm -f /tmp/Ex[0-9]* 2>/dev/null
+    rm -f /tmp/rf[0-9]*.fifo 2>/dev/null
+    rm -f /tmp/nrnday.lock 2>/dev/null
+    find /tmp/ $findswitch -type f -mtime +1 -atime +1 -exec rm -f {} \; 2>/dev/null
+fi
+
+## DRQS 60938402
+if [[ -d /bb/data/logs ]] ; then
+    find /bb/data/logs/ $findswitch -type f -name '*.trc.c*' -mtime +90 -exec rm -f {} \; 2>/dev/null
+    find /bb/data/logs/ $findswitch -type f -name '*.log*' -mtime +90 -exec rm -f {} \; 2>/dev/null
+fi
+
+if [[ -d /bb/logs/ ]] ; then 
+    find /bb/logs/ $findswitch -type f -name '*.trc.c*' -mtime +90 -exec rm -f {} \; 2>/dev/null
+    find /bb/logs/ $findswitch -type f -name '*.log*' -mtime +90 -exec rm -f {} \; 2>/dev/null
+fi
+
+if [[ -d /bb/bin ]] ; then  
+    rm -f /bb/bin/ul*.spl 2>/dev/null
+    rm -f /bb/bin/ul*.o* 2>/dev/null
+    rm -f /bb/bin/sp90*.spl 2>/dev/null
+    rm -f /bb/bin/ytr*.fil 2>/dev/null
+    rm -f /bb/bin/ac5*.act 2>/dev/null
+    rm -f /bb/bin/ms5*.act 2>/dev/null
+    rm -f /bb/bin/*bigs.lock 2>/dev/null
+    rm -f /bb/bin/gnrc*.run 2>/dev/null
+    rm -f /bb/bin/*.new.sav 2>/dev/null
+    rm -f /bb/bin//bb/data/*.new.sav 2>/dev/null
+    rm -f /bb/bin/friday.run 2>/dev/null
+    rm -f /bb/bin/friday.lock 2>/dev/null
+    rm -f /bb/bin/setupdat.run 2>/dev/null
+    rm -f /bb/bin/govtback.run 2>/dev/null
+    rm -f /bb/bin/govtback.lock 2>/dev/null
+    rm -f /bb/bin/inpc[0-9]*.dta 2>/dev/null
+    rm -f /bb/bin/[0-9]*.txt.[0-9]* 2>/dev/null
+    rm -f /bb/bin/[1-9] /bb/bin/[1-9][0-9] /bb/bin/[1-9][0-9][0-9] 2>/dev/null
+    rm -f /bb/bin/sendfile.*.temp 2>/dev/null
+    find /bb/bin/ -xdev -name "*[._][pdo]rqs[0-9]*" -type f -mtime +7 -size 0 -exec rm -f {} \; 2>/dev/null 
+    find /bb/bin/ $findswitch -name "*.upl" -atime +1 -exec rm -f  {} \; 2>/dev/null
+    find /bb/bin/ $findswitch -name "*.run" -mtime +5 -exec rm -f  {} \; 2>/dev/null
+    find /bb/bin/ $findswitch -name "*.bad" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+fi
+
+[[ -d /bb/sys/opbin ]] && \
+    find /bb/sys/opbin/ $findswitch ! -name opbin  -prune  -xdev -user op -type f   \
+    \( -name '*[pd]rqs*[0-9][0-9][0-9][0-9][0-9][0-9][0-9]*' -o   \
+    -name '*rv_[0-9][0-9][0-9][0-9][0-9][0-9][0-9]*' \)           \
+    ! \( -name '*tsk*' \)                                         \
+    ! \( -name '*lrl'  \)                                         \
+    ! \( -name '*trap' \)                                         \
+    ! \( -name '*db'   \)                                         \
+    ! \( -name 'strtday*[pd]rqs*' \)                              \
+    ! \( -name 'beren*[pd]rqs*' \)                                \
+    ! \( -name 'rstrt*[pd]rqs*' \)                                \
+    ! \( -name 'rstrt_dbdwn.auto*[pd]rqs*' \)                     \
+    ! \( -name 'turnaround*[pd]rqs*' \)                           \
+    ! \( -name 'endofday*[pd]rqs*' \)                             \
+    ! \( -name 'dbdwn*[pd]rqs*' \)                                \
+    ! \( -name 'restore*[pd]rqs*' \)                              \
+    \( -atime +3 -o -mtime +3 -o -ctime +3 \)                     \
+    -exec rm -f {} \; 2>/dev/null
+
+if [[ -d /bb/bin/bmds ]] ; then
+    find /bb/bin/bmds/ $findswitch -follow -name "moniddump.dta.flav*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+    find /bb/bin/bmds/ $findswitch -follow -name "phathdrdump.dta.flav*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+fi
+
+if [[ -d /bb/data/bmds ]] ; then 
+    find /bb/data/bmds/ $findswitch -follow -name "moniddump.dta.flav*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+    find /bb/data/bmds/ $findswitch -follow -name "phathdrdump.dta.flav*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+    find /bb/data/bmds/ $findswitch -follow -name "monids.*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+fi
+
+if [[ -d /bb/data3/bmds ]] ; then 
+    find /bb/data3/bmds/ $findswitch -follow -name "moniddump.dta.flav*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+    find /bb/data3/bmds/ $findswitch -follow -name "phathdrdump.dta.flav*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+    find /bb/data3/bmds/ $findswitch -follow -name "monids.*" -mtime +2 -exec rm -f  {} \; 2>/dev/null
+fi 
+
+if [[ -d /bb/data/pepb/load ]] ; then
+    find /bb/data/pepb/load/ $findswitch -mtime +30 -atime +30 -exec rm -f {} \; 2>/dev/null
+fi
+
+if [[ -d /bb/data/pepb ]] ; then
+    find /bb/data/pepb/receive $findswitch -name 'Photos_*.zip' -mtime +30 -atime +30 -exec rm -f {} \; 2>/dev/null
+fi
+
+rm -f dg1 dg1a park1 dgintel1 dgintel2 dgintel3 dgintel4 2>/dev/null
+
+if [[ -d /bb/data/tmp ]] ; then
+    rm -f /bb/data/tmp/ul*.tif.sent 2>/dev/null
+    rm -f /bb/data/tmp/qc* 2>/dev/null
+    rm -f /bb/data/tmp/spy*.csv 2>/dev/null
+    rm -f /bb/data/tmp/nr*.csv 2>/dev/null
+    rm -f /bb/data/tmp/nr*.doc 2>/dev/null
+    rm -f /bb/data/tmp/np*.csv 2>/dev/null
+    rm -f /bb/data/tmp/e*.csv 2>/dev/null
+    rm -f /bb/data/tmp/*.srt 2>/dev/null
+    rm -f /bb/data/tmp/*.done 2>/dev/null
+    rm -f /bb/data/tmp/*.tmp 2>/dev/null
+    rm -f /bb/data/tmp/*.msg 2>/dev/null
+    rm -f /bb/data/tmp/*.err 2>/dev/null
+    rm -f /bb/data/tmp/nrzap* 2>/dev/null
+    rm -f /bb/data/tmp/*gdco*.doc 2>/dev/null
+    rm -f /bb/data/tmp/*beth*.doc 2>/dev/null
+    find /bb/data/tmp/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null
+    find /bb/data/tmp/ $findswitch -name 'rsk*' -mtime +2 -atime +2 -exec rm -f {} \; 2>/dev/null
+    find /bb/data/tmp/ $findswitch ! -name tmp -type d \
+        \( -atime +14 -o -mtime +14 -o -ctime +14 \) \
+        -exec rmdir {} \; 2>/dev/null
+fi
+
+[[ -d /bb/data/spl ]] && \
+   find /bb/data/spl/ $findswitch -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null
+
+
+[[ -d /bb/data/jpmx ]] && \
+   find /bb/data/jpmx/ $findswitch -name 'jpmx_*.ict.*' -mtime +365 -atime +365 -exec rm -f {} \; 2>/dev/null
+
+rm -f /bb/data/*big*.ctace 2>/dev/null
+rm -f /t1/data/ATTRIB/*.new 2>/dev/null
+rm -f /t2/data/ATTRIB/*.new 2>/dev/null
+
+## DRQS 75748958 cleanup switches files
+for LOGDIR in /bb/logs /bb/data/logs /bb/data/tmp /bb/data /bb/bin ; do
+    if [[ -e $LOGDIR ]] ; then
+        rm -f $LOGDIR/switches_log.trc*
+        rm -f $LOGDIR/bbcpuadd.*.lst
+        rm -f $LOGDIR/bbcpudel.*.lst
+        rm -f $LOGDIR/bbcpufinal.*.lst
+    fi
+done
+
+initcf /bb/data/intlchk.dta
+
+dg_kill -9 xtgo
+dg_kill -9 gtail
+dg_kill -9 bbgtail
+
+# Cleanup based on machines types:
+if (! $BBHOST -q -w $HOST msgpc ) &&  [[ -d /bb/data/ ]] ; then 
+    find /bb/data/ $findswitch  \( -name 'btfixchk.[0-9]*' -mtime +7 \) -o \
+        \( -name 'srtex*.out' -mtime +7 \) -o \
+        \( -name '.qamuni.*' -mtime +7 -atime +7 \) -exec rm -f {} \; 2>/dev/null
+fi
+
+if $BBHOST -q -w $HOST big >/dev/null ; then
+    for big in $(cat fetchbigs.local) ; do
+        if [[ -f $big.bad ]] ; then
+            rm -f $big.bad 2>/dev/null
+        fi
+        if ls ${big}[._][dp]rqs[0-9][1-9]* 1>/dev/null 2>&1 ; then
+            find /bb/bin/ $findswitch -type f -name "$(basename $big)[._][dp]rqs[1-9][0-9]*" -mtime +30 -exec rm -f {} \; 2>/dev/null
+        fi
+    done
+fi
+
+if $BBHOST -q -w $HOST user >/dev/null ; then
+    echo $0: $HOST is a user machine - rfunctbl.dta is valid
+else
+    echo $0: $HOST is NOT a user machine - zeroing rfunctbl.dta
+    if [[ -f rfunctbl.dta ]] ; then 
+        cat /dev/null > rfunctbl.dta
+    fi
+    for type in $(cat wsysbe.cmd | awk '{print $1}') ; do
+        if $BBHOST -q -w $HOST $type >/dev/null ; then
+            for file in $(grep $type wsysbe.cmd | awk '{print $2,$3,$4,$5,$6,$7,$8,$9,$10,$11 }') ; do
+                rm -f $file 2>/dev/null
+            done
+        fi
+    done
+    if $BBHOST -q -w $HOST trading >/dev/null ; then
+        echo this is a TS machine
+        [[ -d /bb/bin ]] && \
+            find /bb/bin/ $findswitch -name "*.new" -mtime +30 -exec rm -f {} \; 2>/dev/null
+        [[ -d /t[1-4]/bin ]] && \
+            find /t[1-4]/bin/ $findswitch -name "*.new" -mtime +30 -exec rm -f {} \; 2>/dev/null
+        [[ -d /bb/data ]] && \
+            find /bb/data/ $findswitch -name "*.new" -mtime +30 -exec rm -f {} \; 2>/dev/null
+        [[ -d /t[1-4]/data ]] && \
+            find /t[1-4]/data/ $findswitch -name "*.new" -mtime +30 -exec rm -f {} \; 2>/dev/null 
+        [[ -d /bb/data ]] && \
+            find /bb/data/ $findswitch -name "cpt_*" -mtime +5 -exec rm -f {} \; 2>/dev/null
+        [[ -d /t[1-4]/ext ]] && \
+            find /t[1-4]/ext/ $findswitch -name "f*iprc*" -mtime +30 -exec rm -f {} \; 2>/dev/null
+        [[ -d /t[1-4]/err ]] && \
+            find /t[1-4]/err/ $findswitch -name "cnfeed*" -mtime +30 -exec rm -f {} \; 2>/dev/null
+        [[ -d /t[1-4]/data/printsrv ]] && \
+            find /t[1-4]/data/printsrv/ $findswitch -name 'log.*' -mtime +7 -exec rm -f {} \; 2>/dev/null
+        [[ -d /bb/data/restore ]] && \
+            find /bb/data/restore/ $findswitch -ctime +3 -atime +3 -mtime +3 -exec rm -f {} \; 2>/dev/null
+    fi
+fi
+
+## below is for prqs 10784344
+## added additional find command for nrn files for drqs 7619882
+if $BBHOST -q -w $HOST webg >/dev/null ; then
+    rm -f /bb/data/tracemaster.prn 2>/dev/null
+    [[ -d /bb/data13/webg ]] && \
+        find /bb/data13/webg/ $findswitch -name 'topout.*' -mtime +15 -atime +15 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data6/webg ]] && \
+        find /bb/data6/webg/ $findswitch -mtime +45 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data/fixeqopthdrs ]] && \
+        find /bb/data/fixeqopthdrs/ $findswitch -name '[fh]*' -mtime +30 -atime +30 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data/tmp ]] && \
+        find /bb/data/tmp/ $findswitch -name '*.nrn' -mtime +1 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data20/people_image/ ]] && \
+        find /bb/data20/people_image/ $findswitch -name 'image*.jpg' -mtime +1 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data26/dmssnd2/ ]] && \
+        find /bb/data26/dmssnd2/ $findswitch -name '*.zip' -mtime +1 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data/rs/msrb ]] && \
+        find /bb/data/rs/msrb/ $findswitch -name '*.pdf' -mtime +1 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data/rs/msrb ]] && \
+        find /bb/data/rs/msrb/ $findswitch -name '*.xml' -mtime +1 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data/rs/msrb ]] && \
+        find /bb/data/rs/msrb/ $findswitch -name '*.txt' -mtime +1 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data21/tmp ]] && \
+        find /bb/data21/tmp/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null 
+    [[ -d /bb/data22/tmp ]] && \
+        find /bb/data22/tmp/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null 
+    [[ -d /bb/data23/tmp ]] && \
+        find /bb/data23/tmp/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data24/tmp ]] && \
+        find /bb/data24/tmp/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data25/FundPricing ]] && \
+        find /bb/data25/FundPricing/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data25/NADividends ]] && \
+        find /bb/data25/NADividends/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data25/EarningsEstimates ]] && \
+        find /bb/data25/EarningsEstimates/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f {} \; 2>/dev/null
+    [[ -d /bb/data25/Munis/emails ]] && \
+        find /bb/data25/Munis/emails/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f "{}" \; 2>/dev/null
+    [[ -d /bb/data25/FundHoldings/emails ]] && \
+        find /bb/data25/FundHoldings/emails/ $findswitch -type f -mtime +7 -atime +7 -exec rm -f "{}" \; 2>/dev/null
+    [[ -d /bb/data/tmp ]] && \
+        find /bb/data/tmp/ $findswitch -name '*.nrn.sav' -mtime +7 -exec rm -f {} \; 2>/dev/null
+fi
+
+if $BBHOST -q -w $HOST CRMSP >/dev/null ; then 
+    find /bb/bin/ -xdev -name "*[._][pdo]rqs[0-9]*" -type f -mtime +90 -exec rm -f {} \; 2>/dev/null
+fi
+
+# /int/bin directory cleanup on Internal Machines - DRQS 97530938
+if $BBHOST -q -w $HOST intrl > /dev/null; then
+    [[ -d /int/bin ]] && \
+        find /int/bin $findswitch -name '*.tsk.bad' -type f -mtime +90 -exec rm -f {} \; 2>/dev/null
+fi
+
+cyst_cleanup
+
+touch wsysbe.finish
